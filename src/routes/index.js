@@ -1,16 +1,40 @@
-import express from 'express';
-import { get } from 'https';
 import PromiseRouter from 'express-promise-router';
+import { getAll } from '../lib/github';
+import { tagToBuild } from '../lib/releases';
+import { readBranches, branchToBuild } from '../lib/branches';
 
 const router = new PromiseRouter();
-const urlsPath = require('path').resolve(__dirname, 'urls.json');
+
+let builds;
+async function updateBuilds() {
+  builds = { branches: {}, releases: {} };
+
+  for (const { name } of await getAll('tags')) {
+    const [tag, build] = tagToBuild(name);
+    if (tag) builds.releases[tag] = build;
+  }
+
+  const { branches, bounds } = readBranches(await getAll('branches'));
+  for (const branch of branches) {
+    const [build] = branchToBuild(branch, bounds);
+    if (build) builds.branches[branch] = build;
+  }
+}
+
+let activeUpdate = updateBuilds();
 
 /* GET home page. */
-router.get('/tags', async function(req, res) {
-  res.sendFile(urlsPath);
+router.get('/builds', async function getBuildsRoute(req, res) {
+  await activeUpdate;
+  res.json(builds);
 });
 
-router.all('/update', async function (req, res) {
+router.all('/builds/update', async function checkForUpdateRoute(req, res) {
+  await activeUpdate.catch(() => null);
+
+  activeUpdate = updateBuilds();
+  await activeUpdate;
+
   res.send('okay');
 });
 

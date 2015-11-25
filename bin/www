@@ -4,6 +4,12 @@
  * Module dependencies.
  */
 
+require('bluebird').config({
+  longStackTraces: true,
+  cancellation: false,
+  warnings: true
+});
+
 var app = require('../dest/app');
 var debug = require('debug')('esvm-props:server');
 var http = require('http');
