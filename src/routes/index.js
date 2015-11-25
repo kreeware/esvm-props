@@ -1,7 +1,7 @@
 import PromiseRouter from 'express-promise-router';
 import { getAll } from '../lib/github';
 import { tagToBuild } from '../lib/releases';
-import { readBranches, branchToBuild } from '../lib/branches';
+import { getBranches } from '../lib/branches';
 
 const router = new PromiseRouter();
 
@@ -14,11 +14,7 @@ async function updateBuilds() {
     if (tag) builds.releases[tag] = build;
   }
 
-  const { branches, bounds } = readBranches(await getAll('branches'));
-  for (const branch of branches) {
-    const [build] = branchToBuild(branch, bounds);
-    if (build) builds.branches[branch] = build;
-  }
+  builds.branches = await getBranches();
 }
 
 let activeUpdate = updateBuilds();
