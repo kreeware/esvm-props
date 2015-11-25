@@ -9,4 +9,8 @@ router.get('/tags', function(req, res, next) {
   res.sendFile(urlsPath);
 });
 
+router.get('/update', function () {
+  res.send('sure');
+});
+
 module.exports = router;
