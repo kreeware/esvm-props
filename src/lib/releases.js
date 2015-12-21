@@ -7,6 +7,7 @@ export function tagToBuild(name) {
   const tag = match[2] ? `${match[1]}-${match[2]}` : match[1];
 
   if (satisfies(tag, '>=2.0.0-beta1')) {
+    debugger;
     return [tag, {
       zip: `https://download.elasticsearch.org/elasticsearch/release/org/elasticsearch/distribution/zip/elasticsearch/${tag}/elasticsearch-${tag}.zip`,
       tarball: `https://download.elasticsearch.org/elasticsearch/release/org/elasticsearch/distribution/tar/elasticsearch/${tag}/elasticsearch-${tag}.tar.gz`,

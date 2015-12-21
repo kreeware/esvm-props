@@ -15,7 +15,7 @@ async function send(url) {
 }
 
 async function download(stream, block) {
-  let chunks = [];
+  const chunks = [];
 
   await fn(cb => {
     stream
@@ -27,10 +27,10 @@ async function download(stream, block) {
   });
 
   const unzip = new JSZip();
-  unzip.load(new Buffer.concat(chunks));
+  unzip.load(Buffer.concat(chunks));
   const file = unzip.file('es-build.properties');
-  if (!file) return;
-  else return file.asText();
+  if (!file) return '';
+  return file.asText();
 }
 
 export async function verifyHash(zipUrl) {
