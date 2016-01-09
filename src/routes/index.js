@@ -34,4 +34,8 @@ router.all('/builds/update', async function checkForUpdateRoute(req, res) {
   res.send('okay');
 });
 
+router.get('/ping', function pingRoute(req, res) {
+  res.send('pong');
+});
+
 module.exports = router;
