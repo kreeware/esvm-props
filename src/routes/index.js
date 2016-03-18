@@ -1,36 +1,57 @@
 import PromiseRouter from 'express-promise-router'
 import { getAll } from '../lib/github'
 import { tagToBuild } from '../lib/releases'
-import { getBranches } from '../lib/branches'
+import * as branches from '../lib/branches'
+import debugFactory from 'debug'
 
 const router = new PromiseRouter()
+const debug = debugFactory('esvm-props:fetch')
 
 let builds
-async function updateBuilds() {
-  builds = { branches: {}, releases: {} }
+let activeUpdate
 
-  for (const { name } of await getAll('tags')) {
-    const [tag, build] = tagToBuild(name)
-    if (tag) builds.releases[tag] = build
+async function update() {
+  if (activeUpdate) {
+    // use the active update
+    return await activeUpdate
   }
 
-  builds.branches = await getBranches()
+  activeUpdate = (async function _update_() {
+    debug('fetching updated build info')
+
+    builds = { branches: {}, releases: {} }
+
+    for (const { name } of await getAll('tags')) {
+      const [tag, build] = tagToBuild(name)
+      if (tag) builds.releases[tag] = build
+    }
+
+    builds.branches = await branches.getBranches()
+    activeUpdate = null
+  }())
+
+  return await activeUpdate
 }
 
-let activeUpdate = updateBuilds()
+(async function autoCheckForUpdate() {
+  if (await branches.shouldUpdate()) {
+    debug('fetching auto update')
+    await update()
+  } else {
+    debug('not ready for an update')
+  }
+  setTimeout(autoCheckForUpdate, 30000)
+}())
 
 /* GET home page. */
 router.get('/builds', async function getBuildsRoute(req, res) {
-  await activeUpdate
+  if (activeUpdate) await activeUpdate
   res.json(builds)
 })
 
 router.all('/builds/update', async function checkForUpdateRoute(req, res) {
-  await activeUpdate.catch(() => null)
-
-  activeUpdate = updateBuilds()
-  await activeUpdate
-
+  debug('udpate requested')
+  await update()
   res.send('okay')
 })
 
