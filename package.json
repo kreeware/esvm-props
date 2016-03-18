@@ -30,8 +30,10 @@
     "node": "4.2.x"
   },
   "devDependencies": {
+    "@spalger/eslint-config-personal": "^0.3.0",
     "babel-eslint": "^4.1.6",
-    "eslint": "^1.10.1",
-    "eslint-config-airbnb": "^1.0.0"
+    "eslint": "^2.4.0",
+    "eslint-config-airbnb": "^6.1.0",
+    "eslint-plugin-react": "^4.2.3"
   }
 }
