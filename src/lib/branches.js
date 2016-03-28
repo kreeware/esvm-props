@@ -1,10 +1,12 @@
 import HttpAsset from 'http-asset'
 import pp from 'properties-parser'
-import { props } from 'bluebird'
 import semver from 'semver'
+import debugFactory from 'debug'
 
 import { MavenManifest } from './maven_manifest'
 import { getLatestSnapshot } from './snapshots'
+
+const debug = debugFactory('esvm-props:branches')
 
 const asset = new HttpAsset('https://raw.githubusercontent.com/elastic/ci/master/client_tests_urls.prop')
 const snapshotManifest = new MavenManifest(
@@ -46,46 +48,76 @@ export async function getBranches() {
     if (!version) continue
 
     builds[version] = {
-      zip: url.replace(/\/tar\//g, '/zip/').replace(/\.tar\.gz$/, '.zip'),
-      tarball: url.replace(/\/zip\//g, '/tar/').replace(/\.zip$/, '.tar.gz'),
+      zip: {
+        time: 0,
+        url: url.replace(/\/tar\//g, '/zip/').replace(/\.tar\.gz$/, '.zip'),
+      },
+      tarball: {
+        time: 0,
+        url: url.replace(/\/zip\//g, '/tar/').replace(/\.zip$/, '.tar.gz'),
+      },
     }
+    debug('set base build for %j, %j', version, builds[version])
   }
 
   const versions = await snapshotManifest.fetchSnapshotVersions()
-  let currentMajor = null
-  let foundMaster = false
+  let prev = null
+  let master = null
+
+  async function setBuildVersion(v, name) {
+    const [zip, tarball] = await Promise.all([
+      getLatestSnapshot(v, 'zip'),
+      getLatestSnapshot(v, 'tar'),
+    ])
+
+    const b = builds[name]
+    if (!b) {
+      debug(`setting ${name} to %j`, { zip, tarball })
+      builds[name] = { zip, tarball }
+      return
+    }
+
+    if (zip.time > b.zip.time) {
+      debug(`overriding ${name}.zip to with newer, %j`, zip)
+      b.zip = zip
+    } else {
+      debug(`ignoring older ${name}.zip %j`, zip)
+    }
+
+    if (tarball.time > b.tarball.time) {
+      debug(`overriding ${name}.tarball to with newer %j`, tarball)
+      b.tarball = tarball
+    } else {
+      debug(`ignoring older ${name}.tarball %j`, tarball)
+    }
+  }
 
   for (const v of versions) {
     const major = semver.major(v)
     const minor = semver.minor(v)
 
-    if (currentMajor !== major) {
-      currentMajor = major
+    if (!prev || prev.major !== major || (prev.major === major && prev.minor === minor)) {
       // this is the edge of this major version
-      if (!foundMaster) {
+      if (!master || (master.major === major && master.minor === minor)) {
         // this is master
-        foundMaster = true
-        builds.master = await props({
-          zip: getLatestSnapshot(v, 'zip'),
-          tarball: getLatestSnapshot(v, 'tar'),
-        })
+        master = { major, minor }
+        await setBuildVersion(v, 'master')
       } else {
-        builds[`${major}.x`] = await props({
-          zip: getLatestSnapshot(v, 'zip'),
-          tarball: getLatestSnapshot(v, 'tar'),
-        })
+        await setBuildVersion(v, `${major}.x`)
       }
     } else {
-      builds[`${major}.${minor}`] = await props({
-        zip: getLatestSnapshot(v, 'zip'),
-        tarball: getLatestSnapshot(v, 'tar'),
-      })
+      await setBuildVersion(v, `${major}.${minor}`)
     }
+
+    prev = { major, minor }
   }
 
   // sort the build keys before response
   return Object.keys(builds).sort().reverse().reduce((all, version) => ({
     ...all,
-    [version]: builds[version],
+    [version]: {
+      zip: builds[version].zip.url,
+      tarball: builds[version].tarball.url,
+    },
   }), {})
 }

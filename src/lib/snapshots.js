@@ -21,11 +21,14 @@ export async function getLatestSnapshot(version, type) {
 
   const manifest = await manifests.get(key).fetch()
   const { versioning: { snapshot } } = manifest
-  return stripspace(`
-    https://oss.sonatype.org
-    /content/repositories/snapshots
-    /org/elasticsearch/distribution/${type}
-    /elasticsearch/${version}-SNAPSHOT/
-    elasticsearch-${version}-${snapshot.timestamp}-${snapshot.buildNumber}.${extension}
-  `)
+  return {
+    time: parseFloat(snapshot.timestamp),
+    url: stripspace(`
+      https://oss.sonatype.org
+      /content/repositories/snapshots
+      /org/elasticsearch/distribution/${type}
+      /elasticsearch/${version}-SNAPSHOT/
+      elasticsearch-${version}-${snapshot.timestamp}-${snapshot.buildNumber}.${extension}
+    `),
+  }
 }
