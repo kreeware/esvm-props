@@ -54,9 +54,11 @@ export async function getBranches() {
   const versions = await snapshotManifest.fetchSnapshotVersions()
   let currentMajor = null
   let foundMaster = false
+
   for (const v of versions) {
     const major = semver.major(v)
     const minor = semver.minor(v)
+
     if (currentMajor !== major) {
       currentMajor = major
       // this is the edge of this major version
@@ -82,7 +84,8 @@ export async function getBranches() {
   }
 
   // sort the build keys before response
-  return Object.keys(builds).sort().reverse().reduce((all, version) => {
-    return { ...all, [version]: builds[version] }
-  }, {})
+  return Object.keys(builds).sort().reverse().reduce((all, version) => ({
+    ...all,
+    [version]: builds[version],
+  }), {})
 }

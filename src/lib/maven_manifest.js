@@ -3,6 +3,7 @@ import xml2json from 'xml2json'
 import semver from 'semver'
 import debugFactory from 'debug'
 import { diffChars } from 'diff'
+import { uniq } from 'lodash'
 import chalk from 'chalk'
 
 const debug = debugFactory('esvm-props:MavenManifest')
@@ -59,6 +60,23 @@ export class MavenManifest {
       .map(s => s.replace(/-snapshot$/i, ''))
       .filter(s => semver.valid(s))
       .sort(semver.rcompare)
+      .reduce((deduped, s) => {
+        const last = deduped.pop()
+
+        if (!last) {
+          return [s]
+        }
+
+        const sameMajor = semver.major(last) === semver.major(s)
+        const sameMinor = semver.minor(last) === semver.minor(s)
+        if (sameMajor && sameMinor) {
+          // remove loose duplicates by causing explicit duplicates
+          // that can be wiped out with uniq later
+          return [...deduped, s, s]
+        }
+
+        return [...deduped, last, s]
+      }, [])
 
     if (versions.length !== snapshots.length) {
       debug('not all snapshots could be converted to versions')
@@ -66,6 +84,6 @@ export class MavenManifest {
       throw new Error('not all snapshots could be converted to versions')
     }
 
-    return versions
+    return uniq(versions)
   }
 }
