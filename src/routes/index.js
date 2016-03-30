@@ -59,7 +59,7 @@ router.get('/ping', (req, res) => res.send('pong'))
 
 router.get('/url', async function getUrlFromBuild(req, res) {
   // validate params
-  const { branch, release, format = 'tarball' } = req.query || {}
+  const { branch = 'master', release, format = 'tarball' } = req.query || {}
   if (branch && release) {
     throw new TypeError('this api only accepts branch or release, not both')
   }
