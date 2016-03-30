@@ -57,4 +57,29 @@ router.all('/builds/update', async function checkForUpdateRoute(req, res) {
 
 router.get('/ping', (req, res) => res.send('pong'))
 
+router.get('/url', async function getUrlFromBuild(req, res) {
+  // validate params
+  const { branch, release, format = 'tarball' } = req.query || {}
+  if (branch && release) {
+    throw new TypeError('this api only accepts branch or release, not both')
+  }
+
+  if (format !== 'tarball' && format !== 'zip') {
+    throw new TypeError('format must be either "tarball" or "zip"')
+  }
+
+  if (activeUpdate) await activeUpdate
+
+  const ref = branch || release
+  const type = release ? 'releases' : 'branches'
+  const urls = release ? builds.releases : builds.branches
+
+  if (!urls.hasOwnProperty(ref) || !urls[ref]) {
+    const opts = Object.keys(urls).map(u => JSON.stringify(u)).join(', ')
+    throw new Error(`Unknown ${type} "${ref}", expected one of ${opts}`)
+  }
+
+  res.type('text').send(urls[ref][format])
+})
+
 module.exports = router
