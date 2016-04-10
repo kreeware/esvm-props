@@ -1,41 +1,85 @@
-import PromiseRouter from 'express-promise-router';
-import { getAll } from '../lib/github';
-import { tagToBuild } from '../lib/releases';
-import { getBranches } from '../lib/branches';
+import PromiseRouter from 'express-promise-router'
+import { getAll } from '../lib/github'
+import { tagToBuild } from '../lib/releases'
+import * as branches from '../lib/branches'
+import debugFactory from 'debug'
 
-const router = new PromiseRouter();
+const router = new PromiseRouter()
+const debug = debugFactory('esvm-props:fetch')
 
-let builds;
-async function updateBuilds() {
-  builds = { branches: {}, releases: {} };
+let builds
+let activeUpdate
 
-  for (const { name } of await getAll('tags')) {
-    const [tag, build] = tagToBuild(name);
-    if (tag) builds.releases[tag] = build;
+async function update() {
+  if (activeUpdate) {
+    // use the active update
+    return await activeUpdate
   }
 
-  builds.branches = await getBranches();
+  activeUpdate = (async function _update_() {
+    debug('fetching updated build info')
+
+    builds = { branches: {}, releases: {} }
+
+    for (const { name } of await getAll('tags')) {
+      const [tag, build] = tagToBuild(name)
+      if (tag) builds.releases[tag] = build
+    }
+
+    builds.branches = await branches.getBranches()
+    activeUpdate = null
+  }())
+
+  return await activeUpdate
 }
 
-let activeUpdate = updateBuilds();
+(async function autoCheckForUpdate() {
+  if (await branches.shouldUpdate()) {
+    debug('fetching auto update')
+    await update()
+  } else {
+    debug('not ready for an update')
+  }
+  setTimeout(autoCheckForUpdate, 30000)
+}())
 
 /* GET home page. */
 router.get('/builds', async function getBuildsRoute(req, res) {
-  await activeUpdate;
-  res.json(builds);
-});
+  if (activeUpdate) await activeUpdate
+  res.json(builds)
+})
 
 router.all('/builds/update', async function checkForUpdateRoute(req, res) {
-  await activeUpdate.catch(() => null);
+  debug('udpate requested')
+  await update()
+  res.send('okay')
+})
 
-  activeUpdate = updateBuilds();
-  await activeUpdate;
+router.get('/ping', (req, res) => res.send('pong'))
 
-  res.send('okay');
-});
+router.get('/url', async function getUrlFromBuild(req, res) {
+  // validate params
+  const { branch = 'master', release, format = 'tarball' } = req.query || {}
+  if (branch && release) {
+    throw new TypeError('this api only accepts branch or release, not both')
+  }
 
-router.get('/ping', function pingRoute(req, res) {
-  res.send('pong');
-});
+  if (format !== 'tarball' && format !== 'zip') {
+    throw new TypeError('format must be either "tarball" or "zip"')
+  }
 
-module.exports = router;
+  if (activeUpdate) await activeUpdate
+
+  const ref = branch || release
+  const type = release ? 'releases' : 'branches'
+  const urls = release ? builds.releases : builds.branches
+
+  if (!urls.hasOwnProperty(ref) || !urls[ref]) {
+    const opts = Object.keys(urls).map(u => JSON.stringify(u)).join(', ')
+    throw new Error(`Unknown ${type} "${ref}", expected one of ${opts}`)
+  }
+
+  res.type('text').send(urls[ref][format])
+})
+
+module.exports = router

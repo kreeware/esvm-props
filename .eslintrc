@@ -1,8 +1,3 @@
 ---
-
 parser: babel-eslint
-extends: airbnb/base
-
-env:
-  node: true
-  browser: false
+extends: "@spalger/personal/es6"
