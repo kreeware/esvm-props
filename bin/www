@@ -6,13 +6,14 @@
  * Module dependencies.
  */
 
+require('source-map-support').install()
 require('bluebird').config({
   longStackTraces: true,
   cancellation: false,
   warnings: true
 })
 
-var app = require('../dest/app')
+var app = require('../dest/app').app
 var debug = require('debug')('esvm-props:server')
 var http = require('http')
 

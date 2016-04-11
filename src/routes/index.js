@@ -46,16 +46,41 @@ async function update() {
 /* GET home page. */
 router.get('/builds', async function getBuildsRoute(req, res) {
   if (activeUpdate) await activeUpdate
-  res.json(builds)
+  res.format({
+    html() {
+      res.send(`
+        <h1>Branches</h1>
+        <dl>
+          ${
+            Object.keys(builds.branches).map(branch => {
+              const { zip, tarball } = builds.branches[branch]
+              return `
+                <dt>${branch}</dt>
+                <dd>
+                  <a href="${zip}">zip</a>,
+                  <a href="${tarball}">tarball</a>
+                </dd>
+              `
+            }).join('\n')
+          }
+        </ul>
+      `)
+    },
+
+    json() {
+      res.json(builds)
+    },
+  })
 })
 
 router.all('/builds/update', async function checkForUpdateRoute(req, res) {
+  const start = Date.now()
   debug('udpate requested')
   await update()
-  res.send('okay')
+  res.json({ okay: true, took: Date.now() - start })
 })
 
-router.get('/ping', (req, res) => res.send('pong'))
+router.get('/ping', (req, res) => res.type('text').send('pong'))
 
 router.get('/url', async function getUrlFromBuild(req, res) {
   // validate params
