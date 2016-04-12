@@ -1,5 +1,5 @@
-import { map } from 'bluebird'
-import { createWriteStream } from 'fs'
+import { map, fromCallback as fcb } from 'bluebird'
+import { rename, createWriteStream } from 'fs'
 import path from 'path'
 import fetch from 'node-fetch'
 import mkdirp from 'mkdirp-then'
@@ -8,14 +8,19 @@ import debugFactory from 'debug'
 const debug = debugFactory('esvm-props:cache')
 
 export async function streamToFile(dest, stream) {
+  const tempDest = `${dest}.temp`
+
   await new Promise((resolve, reject) => {
-    debug('streaming download to %j', dest)
+    debug('streaming download to %j', tempDest)
     stream
       .on('error', reject)
-      .pipe(createWriteStream(dest))
+      .pipe(createWriteStream(tempDest))
       .on('error', reject)
       .on('finish', resolve)
   })
+
+  debug('download complete, renaming temp download to %j', dest)
+  await fcb(cb => rename(tempDest, dest, cb))
 }
 
 export async function downloadFormat(dir, branch, format, url) {
