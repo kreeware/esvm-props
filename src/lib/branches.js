@@ -33,7 +33,7 @@ function keyToVersion(key) {
   return null
 }
 
-export async function shouldUpdate() {
+export async function branchManifestStale() {
   return await snapshotManifest.isReadyForUpdate()
 }
 

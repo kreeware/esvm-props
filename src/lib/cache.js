@@ -48,9 +48,9 @@ export async function downloadBranch(dir, branch, urls) {
   await map(formats, format => downloadFormat(dir, branch, format, urls[format]))
 }
 
-export async function downloadAll(dir, builds) {
+export async function downloadAll(dir, branches) {
   return map(
-    Object.keys(builds.branches),
-    branch => downloadBranch(dir, branch, builds.branches[branch])
+    Object.keys(branches),
+    branch => downloadBranch(dir, branch, branches[branch])
   )
 }

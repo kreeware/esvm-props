@@ -1,5 +1,7 @@
 import { satisfies } from 'semver'
 
+import { getAll } from '../lib/github'
+
 export function tagToBuild(name) {
   const match = name.match(/^v?(\d+\.\d+\.\d+)(?:[\.\-](\w+))?$/)
   if (!match) return []
@@ -21,4 +23,15 @@ export function tagToBuild(name) {
   }
 
   return []
+}
+
+export async function getReleases() {
+  const releases = {}
+
+  for (const { name } of await getAll('tags')) {
+    const [tag, build] = tagToBuild(name)
+    if (tag) releases[tag] = build
+  }
+
+  return releases
 }
