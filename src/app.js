@@ -4,6 +4,10 @@ import logger from 'morgan'
 import cookieParser from 'cookie-parser'
 import bodyParser from 'body-parser'
 
+import { rootRouter } from './routes'
+import { setupAutoDiscovery } from './lib/discovery'
+setupAutoDiscovery(30000)
+
 const app = express()
 
 // view engine setup
@@ -18,7 +22,7 @@ app.use(bodyParser.urlencoded({ extended: false }))
 app.use(cookieParser())
 app.use(express.static(path.join(__dirname, 'public')))
 
-app.use('/', require('./routes/index'))
+app.use('/', rootRouter)
 app.get('/status', (req, res) => {
   res.send('online')
 })
