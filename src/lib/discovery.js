@@ -48,7 +48,7 @@ export async function updateBuilds() {
 }
 
 export async function getBuilds() {
-  if (activeUpdate) await activeUpdate
+  if (!builds) await updateBuilds()
   return builds
 }
 
